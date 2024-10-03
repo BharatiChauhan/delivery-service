@@ -1,0 +1,57 @@
+# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
+
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+
+name: restaurant-service cicd flow
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+      - name: Build Project
+        run: mvn clean install -DskipTests
+      - name: Login to Docker hub
+        run: docker login -u ${{secrets.DOCKER_USERNAME}} -p ${{secrets.DOCKER_PASSWORD}}
+      - name: Build docker image
+        run: docker build -t ajaysinh15/delivery_service_docker_images .
+      - name: Publish image to docker hub
+        run: docker push ajaysinh15/delivery_service_docker_images:latest
+
+  deploy:
+    needs: build
+    runs-on: [self-hosted]
+    steps:
+#      - name: Delete all old docker images
+#        run: |
+#          docker stop restaurant_service_docker_images_container || true
+#          docker rmi -f $(docker images -q | grep -v 'in use') || true
+      - name: Pull image from docker hub
+        run: docker pull ajaysinh15/delivery_service_docker_images:latest
+      - name: Delete old container
+        run: |
+          docker stop delivery_service_docker_images_container || true
+          docker rm delivery_service_docker_images_container || true
+      - name: Run docker container
+        run: docker run -d -p 8083:8083 --name delivery_service_docker_images_container ajaysinh15/delivery_service_docker_images:latest
+      - name: Get docker logs
+        run: docker logs delivery_service_docker_images_container
+

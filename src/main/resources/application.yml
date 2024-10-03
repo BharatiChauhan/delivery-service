@@ -1,0 +1,11 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: DELIVERY-SERVICE
+
+eureka:
+  client:
+    service-url:
+      defaultZone : http://3.109.181.121:8761/eureka/
